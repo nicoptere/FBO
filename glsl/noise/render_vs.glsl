@@ -15,7 +15,7 @@ void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
 
     //size
-    gl_PointSize = size = ( step( 1. - ( 1. / 512. ), position.x ) ) * pointSize;
+    gl_PointSize = size = max( 1., ( step( 1. - ( 1. / 512. ), position.x ) ) * pointSize );
 
 
 }
