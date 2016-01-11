@@ -19,12 +19,14 @@
 
     <script src="vendor/three.min.js"></script>
     <script src="vendor/BinaryLoader.js"></script>
+    <script src="vendor/OrbitControls.js"></script>
     <script src="ShaderLoader.js"></script>
     <script src="fbo.js"></script>
 
     <script>
 
-        var scene, camera, renderer;
+        var scene, camera, renderer, controls;
+
         window.onload = function() {
 
             var sl = new ShaderLoader();
@@ -46,6 +48,8 @@
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(60,w/h, 1,600 );
             camera.position.z = 450;
+            controls = new THREE.OrbitControls(camera);
+            controls.minDistance = controls.maxDistance = camera.position.z;
 
             renderer = new THREE.WebGLRenderer({
                 //optional
@@ -58,30 +62,13 @@
             bl.load( "model/bust.js", init );
         }
 
-        //utils
-
-        function isPowerOfTwo(x){
-            return (x & (x - 1)) == 0;
-        }
-
-        function nextHighestPowerOfTwo(x){
-            --x;
-            for (var i = 1; i < 32; i <<= 1) {
-                x = x | x >> i;
-            }
-            return x + 1;
-        }
-
+        //distribution
         function parseMesh(g){
 
             var vertices = g.vertices;
+            console.log( vertices.length)
             var total = vertices.length;
-
-            var size = parseInt( Math.sqrt( total * 3 ) + .5 );// +  2 = bounding box vertices
-            if( !isPowerOfTwo( size ) )
-            {
-                size = nextHighestPowerOfTwo( size );
-            }
+            var size = parseInt( Math.sqrt( total * 3 ) + .5 );
             var data = new Float32Array( size*size*3 );
             for( var i = 0; i < total; i++ ) {
                 data[i * 3] = vertices[i].x;
@@ -128,6 +115,8 @@
             FBO.init( size,size, renderer, simulationShader, renderShader );
             scene.add( FBO.particles );
 
+            FBO.particles.rotation.y += Math.PI / 4 ;
+
             //GO !
             window.addEventListener( "resize", onResize );
             onResize();
@@ -149,11 +138,11 @@
         {
             requestAnimationFrame(update);
 
+            controls.update();
+
             //update the simulation
             FBO.update();
 
-            //update mesh
-            FBO.particles.rotation.y += Math.PI / 180 * .1;
 
             //render the particles at the new location
             renderer.render( scene, camera );

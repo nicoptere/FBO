@@ -113,6 +113,7 @@
 
             var ctx = getContext( null, width, height );
             ctx.drawImage(img, 0, 0);
+
             var imgData = ctx.getImageData(0,0,width,height);
             var iData = imgData.data;
 
@@ -122,9 +123,9 @@
 
                 var i3 = i * 3;
                 var i4 = i * 4;
-                data[ i3 ]      = ( ( i % width ) / width  -.5 ) * width;
+                data[ i3 ]      = ( ( i % width ) - width  * .5 );
                 data[ i3 + 1 ]  = ( iData[i4] / 0xFF * 0.299 +iData[i4+1]/0xFF * 0.587 + iData[i4+2] / 0xFF * 0.114 ) * elevation;
-                data[ i3 + 2 ]  = ( ( i / width ) / height -.5 ) * height;
+                data[ i3 + 2 ]  = ( parseInt( i / width ) - height * .5 );
             }
             return data;
         }
