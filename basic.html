@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>FBO</title>
+    <style>
+        head, body{
+            width:100%;
+            height:100%;
+            overflow: hidden;
+            top:0;
+            left:0;
+            margin:0;
+            padding:0;
+        }
+    </style>
+</head>
+<body>
+
+    <script src="vendor/three.min.js"></script>
+    <script src="ShaderLoader.js"></script>
+    <script src="fbo.js"></script>
+
+    <script>
+
+        var scene, camera, renderer;
+
+        window.onload = function() {
+
+            var sl = new ShaderLoader();
+            sl.loadShaders({
+                simulation_vs : "",
+                simulation_fs : "",
+                render_vs : "",
+                render_fs : ""
+            }, "./glsl/basic/", init );
+
+        };
+
+        function init()
+        {
+
+
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+
+            //regular scene creation
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60,width/height, 1,10000 );
+            camera.position.z = 500;
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize( w,h );
+            document.body.appendChild(renderer.domElement);
+
+            //width / height of the FBO
+
+            var width  = 256;
+            var height = 256;
+
+            //populate a Float32Array of random positions
+
+            var data = getRandomData( width, height, 256 );
+            var positions = new THREE.DataTexture( data, width, height, THREE.RGBFormat, THREE.FloatType );
+            positions.needsUpdate = true;
+
+            //this will be used to update the particles' positions
+
+            var simulationShader = new THREE.ShaderMaterial({
+
+                uniforms: {
+                    positions: { type: "t", value: positions }
+                },
+                vertexShader: ShaderLoader.get( "simulation_vs" ),
+                fragmentShader:  ShaderLoader.get( "simulation_fs" )
+            });
+
+
+            //this will be used to represent the particles on screen
+            //note that 'positions' is a texture that will be set and updated during the FBO.update() call
+            var renderShader = new THREE.ShaderMaterial( {
+                uniforms: {
+                    positions: { type: "t", value: null },
+                    pointSize: { type: "f", value: 2 }
+                },
+                vertexShader: ShaderLoader.get( "render_vs" ),
+                fragmentShader: ShaderLoader.get( "render_fs" ),
+                transparent: true,
+                blending:THREE.AdditiveBlending
+            } );
+
+            //init the FBO
+            FBO.init( width,height, renderer, simulationShader, renderShader );
+            scene.add( FBO.particles );
+
+            //GO !
+            window.addEventListener( "resize", onResize );
+            onResize();
+            update();
+
+        }
+
+        //returns an array of random 3D coordinates
+        function getRandomData( width, height, size ){
+
+            var len = width * height * 3;
+            var data = new Float32Array( len );
+            while( len-- )data[len] = ( Math.random() -.5 ) * size ;
+            return data;
+        }
+
+        function onResize()
+        {
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            renderer.setSize(w,h);
+            camera.aspect = w/h;
+            camera.updateProjectionMatrix();
+        }
+
+        //update loop
+        function update()
+        {
+            requestAnimationFrame(update);
+
+            //update the simulation
+            FBO.update();
+
+            //update mesh
+            FBO.particles.rotation.x += Math.PI / 180 * .5;
+            FBO.particles.rotation.y -= Math.PI / 180 * .5;
+
+            //render the particles at the new location
+            renderer.render( scene, camera );
+
+        }
+
+    </script>
+
+</body>
+</html>

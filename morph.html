@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>FBO</title>
+    <style>
+        head, body{
+            width:100%;
+            height:100%;
+            overflow: hidden;
+            top:0;
+            left:0;
+            margin:0;
+            padding:0;
+        }
+        #time
+        {
+            position: absolute;
+            top: 1em;
+            width:100%;
+            height: 32px;
+        }
+    </style>
+</head>
+<body>
+
+    <script src="vendor/three.min.js"></script>
+    <script src="ShaderLoader.js"></script>
+    <script src="fbo.js"></script>
+
+    <!--<input id="time"type="range" min="0" max="1" step="0.001" >-->
+
+    <script>
+
+        var scene, camera, renderer;
+        var simulationnShader, slider, automatic;
+
+
+        window.onload = function() {
+
+            var sl = new ShaderLoader();
+            sl.loadShaders({
+                simulation_vs : "",
+                simulation_fs : "",
+                render_vs : "",
+                render_fs : ""
+            }, "./glsl/morph/", init );
+
+        };
+
+        function init()
+        {
+
+            slider = createSlider();
+
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize( w,h );
+            document.body.appendChild(renderer.domElement);
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60,width/height, 1,10000 );
+            camera.position.z = 500;
+
+
+            var width  = 256;
+            var height = 256;
+
+            //first model
+            var dataA = getRandomData( width, height, 256 );
+            var textureA = new THREE.DataTexture( dataA, width, height, THREE.RGBFormat, THREE.FloatType, THREE.DEFAULT_MAPPING, THREE.RepeatWrapping, THREE.RepeatWrapping );
+            textureA.needsUpdate = true;
+
+            //second model
+            var dataB = getSphere( width * height, 128 );
+            var textureB = new THREE.DataTexture( dataB, width, height, THREE.RGBFormat, THREE.FloatType, THREE.DEFAULT_MAPPING, THREE.RepeatWrapping, THREE.RepeatWrapping );
+            textureB.needsUpdate = true;
+
+            simulationShader = new THREE.ShaderMaterial({
+
+                uniforms: {
+                    textureA: { type: "t", value: textureA },
+                    textureB: { type: "t", value: textureB },
+                    timer: { type: "f", value: 0},
+                    speed: { type: "f", value: 1}
+                },
+                vertexShader: ShaderLoader.get( "simulation_vs"),
+                fragmentShader:  ShaderLoader.get( "simulation_fs")
+
+            });
+
+            var renderShader = new THREE.ShaderMaterial( {
+                uniforms: {
+                    positions: { type: "t", value: null },
+                    pointSize: { type: "f", value: 1 },
+                    alpha: { type: "f", value:.5 }
+                },
+                vertexShader: ShaderLoader.get( "render_vs"),
+                fragmentShader: ShaderLoader.get( "render_fs"),
+                transparent: true,
+                blending:THREE.AdditiveBlending
+            } );
+
+            FBO.init( width,height, renderer, simulationShader, renderShader );
+            scene.add( FBO.particles );
+
+            window.addEventListener( "resize", onResize );
+            onResize();
+            update();
+        }
+
+        function createSlider()
+        {
+            var slider = document.createElement("input");
+            slider.setAttribute( 'type', "range" );
+            slider.setAttribute( 'min',0 );
+            slider.setAttribute( 'max',1 );
+            slider.setAttribute( 'step',0.01 );
+
+            slider.style.position = "absolute";
+            slider.style.top = "0";
+            slider.style.width = "100%";
+            slider.style.zIndex = "1";
+            document.body.appendChild(slider);
+            return slider;
+        }
+
+        //returns a Float32Array buffer of random 3D coordinates
+        function getRandomData( width, height, size ){
+
+            var len = width * height * 3;
+            var data = new Float32Array( len );
+            while( len-- )data[len] = ( Math.random() -.5 ) * size ;
+            return data;
+        }
+
+
+        //returns a Float32Array buffer of spherical 3D points
+        function getPoint(v,size)
+        {
+            v.x = Math.random() * 2 - 1 ;
+            v.y = Math.random() * 2 - 1 ;
+            v.z = Math.random() * 2 - 1 ;
+            if(v.length()>1)return getPoint(v,size);
+            return v.normalize().multiplyScalar(size);
+        }
+
+        function getSphere( count, size ){
+
+            var len = count * 3;
+            var data = new Float32Array( len );
+            var p = new THREE.Vector3();
+            for( var i = 0; i < len; i+=3 )
+            {
+                getPoint( p, size );
+                data[ i     ] = p.x;
+                data[ i + 1 ] = p.y;
+                data[ i + 2 ] = p.z;
+            }
+            return data;
+        }
+
+        function onResize()
+        {
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            renderer.setSize(w,h);
+            camera.aspect = w/h;
+            camera.updateProjectionMatrix();
+        }
+
+
+        function update()
+        {
+            requestAnimationFrame(update);
+
+            //update params
+            simulationShader.uniforms.timer.value = parseFloat( slider.value );
+            FBO.particles.rotation.y -= Math.PI / 180 * .1;
+
+            //update simulation
+            FBO.update();
+
+            //render the particles at the new location
+            renderer.render( scene, camera );
+
+        }
+    </script>
+
+</body>
+</html>
