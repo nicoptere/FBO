@@ -3,7 +3,7 @@ var FBO = function( exports ){
     var scene, orthoCamera, rtt;
     exports.init = function( width, height, renderer, simulationMaterial, renderMaterial ){
 
-        gl = renderer.getContext();
+        var gl = renderer.getContext();
 
         //1 we need FLOAT Textures to store positions
         //https://github.com/KhronosGroup/WebGL/blob/master/sdk/tests/conformance/extensions/oes-texture-float.html
