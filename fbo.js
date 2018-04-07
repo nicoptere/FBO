@@ -25,7 +25,7 @@ var FBO = function( exports ){
         var options = {
             minFilter: THREE.NearestFilter,//important as we want to sample square pixels
             magFilter: THREE.NearestFilter,//
-            format: THREE.RGBFormat,//could be RGBAFormat
+            format: THREE.RGBAFormat,//180407 changed to RGBAFormat
             type:THREE.FloatType//important as we need precise coordinates (not ints)
         };
         rtt = new THREE.WebGLRenderTarget( width,height, options);
